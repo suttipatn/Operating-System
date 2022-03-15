@@ -99,7 +99,7 @@ void start_many_quick_threads()
 {
     for(int i = 0; i < 20; i++) {
         create_new_thread(quick_ending_thread);
-        yield();
+       	yield();
     }
     finish_thread();
 }

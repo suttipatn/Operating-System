@@ -12,8 +12,10 @@ these functions here in the .c file rather than the header.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "basic_threads.h"
+#include "preempt_threads.h"
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
 // 64kB stack
 #define THREAD_STACK_SIZE 1024*64
 
@@ -165,6 +167,15 @@ curindex++;
 curindex%=MAX_THREADS;
 numthread++;
 }
+
+
+void catch_alarm(int sig_num)
+{
+    yield();
+	swapcontext( &threads[i], &parent );
+}
+
+
 /*
 schedule_threads
 
@@ -196,11 +207,13 @@ printf("Starting threads...");
 schedule_threads()
 printf("All threads finished");
 */
-void schedule_threads() {
+void schedule_threads_with_preempt(int usecs) {
 while(!child_done){
 	if(curindex==0){
 		curindex=MAX_THREADS;}
 while(!check[i]){i++;i%=curindex;}
+signal(SIGALRM, catch_alarm);
+ualarm(usecs, 0);
 swapcontext(&parent, &threads[i]);
 if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 
