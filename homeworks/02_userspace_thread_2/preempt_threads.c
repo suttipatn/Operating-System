@@ -45,6 +45,23 @@ int numthread;
 int curindex;
 int i;
 int numdone;
+int time;
+
+void mask(){
+sigset_t mask;
+sigemptyset (&mask);
+sigaddset (&mask, SIGALRM);
+if(sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+    perror ("sigprocmask");
+}}
+void unmask(){
+sigset_t mask;
+sigemptyset (&mask);
+sigaddset (&mask, SIGALRM);
+if(sigprocmask(SIG_UNBLOCK, &mask, NULL) < 0) {
+    perror ("sigprocmask");
+}}
+
 /*
 initialize_basic_threads
 
@@ -65,16 +82,23 @@ blank.
 
  */
 void initialize_basic_threads() {
+mask();
 child_done=false;
 curindex=0;
 numthread=0;
 i=0;
 numdone=0;
 memset(check,0,MAX_THREADS*sizeof(*check));
+time=0;
+unmask();
 }
 
+void yieldH() {
+swapcontext(&threads[i],&parent);
+}
 
 void helperFunction(void (*fun_ptr)(void*), void* parameter){
+//ualarm(time,0);
 fun_ptr(parameter);
 finish_thread();
 }
@@ -143,7 +167,8 @@ schedule_threads();
  */
 
 void create_new_parameterized_thread(void (*fun_ptr)(void*), void* parameter) {
-  curindex%=MAX_THREADS;
+  mask();
+	curindex%=MAX_THREADS;
     while(check[curindex]){curindex++;curindex%=MAX_THREADS;}
     getcontext(&threads[curindex]);
 
@@ -166,16 +191,14 @@ check[curindex]=true;
 curindex++;
 curindex%=MAX_THREADS;
 numthread++;
+unmask();
 }
 
 
 void catch_alarm(int sig_num)
 {
-    yield();
-	swapcontext( &threads[i], &parent );
+    yieldH();
 }
-
-
 /*
 schedule_threads
 
@@ -209,11 +232,14 @@ printf("All threads finished");
 */
 void schedule_threads_with_preempt(int usecs) {
 while(!child_done){
+	mask();
 	if(curindex==0){
 		curindex=MAX_THREADS;}
 while(!check[i]){i++;i%=curindex;}
+time=usecs;
 signal(SIGALRM, catch_alarm);
 ualarm(usecs, 0);
+unmask();
 swapcontext(&parent, &threads[i]);
 if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 
@@ -222,6 +248,9 @@ if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 	    curindex=MAX_THREADS;}
     i%=curindex;
 }
+signal(SIGALRM, SIG_IGN);
+alarm(0);
+unmask();
 }
 
 /*
@@ -263,10 +292,11 @@ void thread_function()
 }
 
 */
-void yield() {
+void yield(){
+mask();
 swapcontext(&threads[i],&parent);
+unmask();
 }
-
 /*
 finish_thread
 
@@ -292,9 +322,11 @@ void thread_function()
 
 */
 void finish_thread() {
+//mask();
 check[i]=false;
 numthread--;
 if(numthread==0){
 	child_done=true;}
 	swapcontext(&threads[i],&parent);
+//unmask();
 }
