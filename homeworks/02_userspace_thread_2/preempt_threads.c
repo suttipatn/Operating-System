@@ -34,7 +34,7 @@ annoying.  So please leave this value as it is and use MAX_THREADS
 */
 #define MAX_THREADS 5
 
-// storage for your thread data
+// storage for your threadisable_sigalrm_signald data
 ucontext_t threads[MAX_THREADS];
 bool check[MAX_THREADS];
 ucontext_t parent;
@@ -47,14 +47,14 @@ int i;
 int numdone;
 int time;
 
-void mask(){
+void disable_sigalrm_signal(){
 sigset_t mask;
 sigemptyset (&mask);
 sigaddset (&mask, SIGALRM);
 if(sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
     perror ("sigprocmask");
 }}
-void unmask(){
+void enable_sigalrm_signal(){
 sigset_t mask;
 sigemptyset (&mask);
 sigaddset (&mask, SIGALRM);
@@ -82,7 +82,7 @@ blank.
 
  */
 void initialize_basic_threads() {
-mask();
+disable_sigalrm_signal();
 child_done=false;
 curindex=0;
 numthread=0;
@@ -90,20 +90,25 @@ i=0;
 numdone=0;
 memset(check,0,MAX_THREADS*sizeof(*check));
 time=0;
-unmask();
+enable_sigalrm_signal();
 }
 
 void yieldH() {
 swapcontext(&threads[i],&parent);
+ualarm(time,0);
 }
-
+void catch_alarm(int sig_num)
+{
+yieldH();
+}
 void helperFunction(void (*fun_ptr)(void*), void* parameter){
-//ualarm(time,0);
+enable_sigalrm_signal();
+ualarm(time,0);
 fun_ptr(parameter);
 finish_thread();
 }
 /*
-create_new_thread
+create_new_threaddisable_sigalrm_signal
 
 Gets a new thread ready to run, but does not start it.  It will be
 started within schedule_threads() when it is this thread's turn (see
@@ -167,7 +172,7 @@ schedule_threads();
  */
 
 void create_new_parameterized_thread(void (*fun_ptr)(void*), void* parameter) {
-  mask();
+  disable_sigalrm_signal();
 	curindex%=MAX_THREADS;
     while(check[curindex]){curindex++;curindex%=MAX_THREADS;}
     getcontext(&threads[curindex]);
@@ -191,14 +196,11 @@ check[curindex]=true;
 curindex++;
 curindex%=MAX_THREADS;
 numthread++;
-unmask();
+enable_sigalrm_signal();
 }
 
 
-void catch_alarm(int sig_num)
-{
-    yieldH();
-}
+
 /*
 schedule_threads
 
@@ -231,16 +233,18 @@ schedule_threads()
 printf("All threads finished");
 */
 void schedule_threads_with_preempt(int usecs) {
+disable_sigalrm_signal();
 while(!child_done){
-	mask();
+//	disable_sigalrm_signal();
 	if(curindex==0){
 		curindex=MAX_THREADS;}
 while(!check[i]){i++;i%=curindex;}
 time=usecs;
 signal(SIGALRM, catch_alarm);
-ualarm(usecs, 0);
-unmask();
+//ualarm(usecs,0);
+//enable_sigalrm_signal();
 swapcontext(&parent, &threads[i]);
+//disable_sigalrm_signal();
 if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 
     i++;
@@ -250,7 +254,7 @@ if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 }
 signal(SIGALRM, SIG_IGN);
 alarm(0);
-unmask();
+enable_sigalrm_signal();
 }
 
 /*
@@ -293,9 +297,10 @@ void thread_function()
 
 */
 void yield(){
-mask();
+disable_sigalrm_signal();
 swapcontext(&threads[i],&parent);
-unmask();
+ualarm(time,0);
+enable_sigalrm_signal();
 }
 /*
 finish_thread
@@ -322,11 +327,12 @@ void thread_function()
 
 */
 void finish_thread() {
-//mask();
+disable_sigalrm_signal();
 check[i]=false;
 numthread--;
 if(numthread==0){
 	child_done=true;}
 	swapcontext(&threads[i],&parent);
-//unmask();
+enable_sigalrm_signal();
 }
+

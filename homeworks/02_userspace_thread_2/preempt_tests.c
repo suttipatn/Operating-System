@@ -190,13 +190,13 @@ int main(int argc, char *argv[]) {
     CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
 
-   // SUITE_ADD_TEST(suite, test_1);
- //   SUITE_ADD_TEST(suite, test_2);
+    SUITE_ADD_TEST(suite, test_1);
+    SUITE_ADD_TEST(suite, test_2);
     SUITE_ADD_TEST(suite, test_3);
-    //SUITE_ADD_TEST(suite, test_4);
-   // SUITE_ADD_TEST(suite, test_5);
-  //  SUITE_ADD_TEST(suite, test_6);
- //   SUITE_ADD_TEST(suite, test_7);
+    SUITE_ADD_TEST(suite, test_4);
+    SUITE_ADD_TEST(suite, test_5);
+    SUITE_ADD_TEST(suite, test_6);
+    SUITE_ADD_TEST(suite, test_7);
     
 
     CuSuiteRun(suite);
