@@ -1,15 +1,16 @@
 Be sure to write your name(s) in this file.
-
+Yok Ngammankongtangkit
 Answer the questions posted in the instructions here.
 
 Question 1:
 
-(a)
+(a)Seg Fault(core dumped)
 
 
-(b)
+(b)Line 30. fgets function
 
-Problem 2:
+Problem 2: nextLine which is a pointer to an array of chars is not initialized. It is used to store a line read from filePtr.
 
-Problem 3:
+Problem 3: calloc nextLine so that it is initialized before calling fgetline since fgetline calls fgets in the first time. calloc initialized buffer with zero while malloc do not initialize.
+Both dynamically allocate space on heap.
 

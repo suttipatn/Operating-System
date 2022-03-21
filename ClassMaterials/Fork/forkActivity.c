@@ -134,7 +134,24 @@ exiting
 
 int main() {
   // look at forkExample for help!
-  printf("exiting\n");
+for(int i=0;i<10;i++){
+int pid =fork();
+	if(pid==0){
+		//printf("I'm child %d\n",i);
+		//sleep(1);
+		//exit(i);
+		char output[50];
+ 		snprintf(output, 50, "I'm child %d",i);
+		execlp("./buffalosay.bin","./buffalosay.bin",output,NULL);
+		exit(i);
+	}}
+for(int i=0;i<10;i++){
+	int status;
+	wait(&status);
+	printf("One child has quit with exit code %d\n",WEXITSTATUS(status));
+	}
+	printf("exiting\n");
+
 
   return 0;
 }

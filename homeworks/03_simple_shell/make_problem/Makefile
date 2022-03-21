@@ -32,5 +32,25 @@
 
 ## Here's a free rule for your convenience
 ## Remove all the compilation and debugging files
+all: author unittest
+
+author: author.o main.o
+	gcc author.o main.o -o author
+
+unittest: unittest.o author.o CuTest.o
+	gcc unittest.o author.o CuTest.o -o unittest
+
+author.o: author.c author.h
+	gcc -c author.c -o author.o
+
+main.o: main.c author.h
+	gcc -c main.c -o main.o
+
+unittest.o: unittest.c author.h CuTest.h
+	gcc -c unittest.c -o unittest.o
+
+CuTest.o: CuTest.c CuTest.h
+	gcc -c CuTest.c -o CuTest.o
+
 clean: 
 	rm -f author unittest *.o *~
