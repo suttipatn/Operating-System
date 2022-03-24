@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 #define simple_assert(message, test) do { if (!(test)) return message; } while (0)
 #define TEST_PASSED NULL
@@ -45,34 +47,47 @@ void* run_test(void *test_to_run_void) {
     char* (*test_func)() = test_to_run_void;
     return test_func();
 }
-
+void spawn(int n){
+	if(n==0){
+		return;
+	}
+	int pid =fork();
+	if(pid>0){
+//		if(n-1==0){return;}
+		spawn(n-1);
+	}
+	else if(pid==0){
+		setup();
+		char* tresult = test_funcs[i]();
+	if(tresult == TEST_PASSED) {
+   	 exit(0);
+} else {
+    exit(1);
+}
+		exit(1);
+	}
+	
+}
 void run_all_tests() {
-
-    pthread_t tests[100];
-    
-    
-    for(int i = 0; i < num_tests; i++) {
-        if(pthread_create(&tests[i], NULL, &run_test, test_funcs[i])) {
-
-            printf("Error creating thread\n");
-            exit(2);
-
-        }
-    }
-    for(int i = 0; i < num_tests; i++) {
-        char* result = NULL;
-        if(pthread_join(tests[i],(void**) &result)) {
-            printf("Error joining thread\n");
-            exit(2);
-        }
-        if(result == TEST_PASSED) {
-            printf("Test Passed\n");
-        } else {
-            printf("Test Failed: %s\n",result);
-        }
-
-    }
-        
+//for(int i=0;i<num_tests;i++){
+//int pid=fork();
+//if(pid==0){
+//setup();
+//(*test_funcs[i])();
+//exit(i+1);
+//}
+//else if(pid>0){
+//int pid2=fork();
+//if(pid2==0){
+//	setup()
+//}
+//}
+spawn(num_tests);
+for(int i=0;i<num_tests;i++){
+int status;
+wait(&status);
+printf("Test Done\n");
+}
 }
 
 char* test1() {

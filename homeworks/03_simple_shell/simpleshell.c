@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 
     void sighandler(){
-                printf("Background command finished\n");
 		int status;
 		wait(&status);
         }
@@ -17,12 +16,11 @@
 int main() {
     char command[82];
     char *parsed_command[2];
-// signal(SIGCHLD,sighandler);    //takes at most two input arguments
+     //takes at most two input arguments
+ signal(SIGCHLD,sighandler);  
     // infinite loop but ^C quits
     while (1) {
-   signal(SIGCHLD,sighandler);
       	    printf("SHELL%% ");
-//	 signal(SIGCHLD,sighandler);
         fgets(command, 82, stdin);
         command[strlen(command) - 1] = '\0';//remove the \n
         int len_1;
@@ -43,34 +41,30 @@ int main() {
 
 	}
 	int pid=fork();
-//	if(pid==0){
 	if(parsed_command[0][0]=='B'&&parsed_command[0][1]=='G'){
-		 if(pid==0){	 
-	       	execlp(parsed_command[0]+2,parsed_command[0]+2,parsed_command[1],(char*)NULL);
-		 }
-		 else if(pid>0){
-			 int status;
-			 waitpid(pid,&status,WNOHANG);
-//printf("Background command finished");
+		 if(pid==0){
+			int pid2=fork();
+			if(pid2==0){
+	       			execlp(parsed_command[0]+2,parsed_command[0]+2,parsed_command[1],(char*)NULL);
+				exit(1);
+			}
+			else if(pid2>0){
+				int status;
+				wait(&status);
+				printf("Background command finished\n");
+				exit(2);
+			}
 		 }}
+
 	else{
 		 if(pid==0){
 			 execlp(parsed_command[0],parsed_command[0],parsed_command[1],(char*)NULL);
+		exit(3);
 		 }
 		else if(pid>0){
 				int status;
 				wait(&status);
-			//	printf("Background command finished\n");
 		 }}
-//	signal(SIGCHLD,sighandler);
-//	 }
-//	else if(pid>0){
-//		int status;
-//		if(parsed_command[0][0]=='B'&&parsed_command[0][1]=='G'){
-	//		waitpid(pid,&status,WNOHANG);
 		}
-//		else{wait(&status);}
 		
-	int status;
-                         waitpid(-1,&status,WNOHANG);
   }
