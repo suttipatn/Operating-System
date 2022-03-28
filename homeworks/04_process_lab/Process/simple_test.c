@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <sys/types.h>
-
+#include <string.h>
 #define simple_assert(message, test) do { if (!(test)) return message; } while (0)
 #define TEST_PASSED NULL
 #define DATA_SIZE 100
@@ -41,55 +41,62 @@ void setup() {
 }
 
 char* test1();
-
-void* run_test(void *test_to_run_void) {
-    setup();
-    char* (*test_func)() = test_to_run_void;
-    return test_func();
-}
-void spawn(int n){
-	if(n==0){
-		return;
-	}
-	int pid =fork();
-	if(pid>0){
-//		if(n-1==0){return;}
-		spawn(n-1);
-	}
-	else if(pid==0){
-		setup();
-		char* tresult = test_funcs[i]();
-	if(tresult == TEST_PASSED) {
-   	 exit(0);
-} else {
-    exit(1);
-}
-		exit(1);
-	}
-	
+void catch_alarm()
+{
+        printf("Test Timed Out\n");
+        exit(3);
 }
 void run_all_tests() {
-//for(int i=0;i<num_tests;i++){
-//int pid=fork();
-//if(pid==0){
-//setup();
-//(*test_funcs[i])();
-//exit(i+1);
-//}
-//else if(pid>0){
-//int pid2=fork();
-//if(pid2==0){
-//	setup()
-//}
-//}
-spawn(num_tests);
-for(int i=0;i<num_tests;i++){
-int status;
-wait(&status);
-printf("Test Done\n");
-}
-}
+int pipeResult[2];
+char arr[num_tests][40];
+int arr2[num_tests];
+        setup();
 
+        for(int i=0;i<num_tests;i++){
+                pipe(pipeResult);
+
+                int pid=fork();
+                if(pid==0){
+                        signal(SIGALRM, catch_alarm);
+                        alarm(3);
+                        char* tresult = test_funcs[i]();
+
+                        if(tresult == TEST_PASSED) {
+                                close(pipeResult[0]);
+                                close(pipeResult[1]);
+                                exit(0);
+                        } else {
+                                close(pipeResult[0]);
+                                write(pipeResult[1], tresult, strlen(tresult));
+                                close(pipeResult[1]);
+                                exit(1);
+                        }
+                }
+                else if(pid>0){
+                        close(pipeResult[1]);
+                        arr2[i]=pid;
+                        read(pipeResult[0],arr[i],40);
+                        close(pipeResult[0]);
+                }
+
+
+        }
+        for(int i=0;i<num_tests;i++){
+                int status;
+                waitpid(arr2[i],&status,0);
+                if(!WIFEXITED(status))  {
+                        printf("Test Crashed\n");
+                        exit(2);
+                }
+                int n=WEXITSTATUS(status);
+                if(n==0){
+                        printf("Test Passed\n");
+                }
+                else if(n==1){
+                        printf("Test Failed: %s\n", arr[i]);
+                }
+        }
+}
 char* test1() {
 
     printf("starting test 1\n");
@@ -175,8 +182,8 @@ void main() {
     add_test(test1);
     add_test(test2);
     add_test(test3);
-    // add_test(test4); // uncomment for Step 4
-    // add_test(test5); // uncomment for Step 5
+    add_test(test4); // uncomment for Step 4
+    add_test(test5); // uncomment for Step 5
     run_all_tests();
     
 }
