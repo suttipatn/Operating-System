@@ -332,7 +332,7 @@ void check_path_to_inode_num(int fd, struct os_fs_metadata_t *metadata) {
 
   os_bool_t res;
 
-  res = path_to_inode_num("/small-file.txt", fd, metadata);
+ res = path_to_inode_num("/small-file.txt", fd, metadata);
   test_uint32_equal(res, 15, "small-file.txt inode num", 4);
   res = path_to_inode_num("/451_lectures/7-sync.pdf", fd, metadata);
   test_uint32_equal(res, 3742, "7-sync inode num", 4);

@@ -236,9 +236,9 @@ void schedule_threads_with_preempt(int usecs) {
 disable_sigalrm_signal();
 while(!child_done){
 //	disable_sigalrm_signal();
-//	if(curindex==0){
-//		curindex=MAX_THREADS;}
-while(!check[i]){i++;i%=MAX_THREADS;}
+	if(curindex==0){
+		curindex=MAX_THREADS;}
+while(!check[i]){i++;i%=curindex;}
 time=usecs;
 signal(SIGALRM, catch_alarm);
 //ualarm(usecs,0);
@@ -248,9 +248,9 @@ swapcontext(&parent, &threads[i]);
 if(!check[i]){free(threads[i].uc_stack.ss_sp);}
 
     i++;
-  //  if(curindex==0){
-//	    curindex=MAX_THREADS;}
-    i%=MAX_THREADS;
+    if(curindex==0){
+	    curindex=MAX_THREADS;}
+    i%=curindex;
 }
 signal(SIGALRM, SIG_IGN);
 alarm(0);
@@ -299,8 +299,9 @@ void thread_function()
 void yield(){
 disable_sigalrm_signal();
 swapcontext(&threads[i],&parent);
-enable_sigalrm_signal();
 ualarm(time,0);
+
+enable_sigalrm_signal();
 
 }
 /*

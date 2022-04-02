@@ -39,8 +39,8 @@ void load_ext2_metadata(int fd, struct os_fs_metadata_t* metadata) {
   struct os_superblock_t superblock_data;
 
   // YOUR LOADING CODE HERE
-lseek(fd,1024,SEEK_SET);
- read(fd,&superblock_data,sizeof(struct os_superblock_t));  
+  lseek(fd,1024,SEEK_SET);
+read(fd,&superblock_data,sizeof(struct os_superblock_t));  
   // 2. All the data we need is in the superblock and groupblock
   // descriptor table (right after the superblock, but we need to read
   // the superblock first to figure out its size)...but its not in a
@@ -200,18 +200,20 @@ os_bool_t fetch_inode(os_uint32_t inode_number, int fd,
   // Remember that the you stashed the number of inodes per
   // blockgroup in "metadata".  Also note that the first inode
   // has number 1, **not** number 0.  (Thanks a lot, ext2!)
-  os_uint32_t blockgroup_num = 0xDEADBEEF;  // you must fix this.
+  os_uint32_t blockgroup_num = (inode_number-1)/(metadata->inodes_per_group);  // you must fix this.
 
   // Step 2.  Figure out the offset of the inode within
   // the group (i.e., is this the 0th inode in the group?
   // the 10th?  the 100th?)
-  os_uint32_t offset_within_blockgroup = 0xDEADBEEF;  // you must fix this.
+  os_uint32_t offset_within_blockgroup = (inode_number-1)%(metadata->inodes_per_group);  // you must fix this.
 
   // Step 3.  Make sure this inode number is valid -- i.e., verify
   // that the blockgroup number that you calculated makes sense, given
   // how many blockgroups are on this filesystem.  If it is not valid,
   // return FALSE.
-
+if(metadata->num_blockgroups<=blockgroup_num){
+  return FALSE;
+}
   // Step 4.  Calculate the block # that this inode lives in.
   // Remember that the layout of the blockgroup is stored within that
   // blockgroup's descriptor table entry.  In particular, the
@@ -232,11 +234,12 @@ os_bool_t fetch_inode(os_uint32_t inode_number, int fd,
 
   // Step 5.  Calculate the byte offset of this inode within the
   // block that it lives on.
-
+  os_uint32_t byte_offset = (offset_within_blockgroup % num_inodes_per_block)*sizeof(struct os_inode_t);
   // Step 6. Use lseek() and read() to read the inode off of disk
   // and into "inode", given the inodes block number and
-  // byte offset within that block that you calculated earlier.
-  
+  // byte offset within that block that you calculated earlier
+  lseek(fd,(inode_block_num*(metadata->block_size))+byte_offset,SEEK_SET);
+  read(fd,returned_inode,sizeof(struct os_inode_t));  
   // All done!
   return TRUE;
 }
@@ -308,6 +311,10 @@ void calculate_offsets(os_uint32_t blocknum,
   // the other two.
   if (blocks_left < (blocksize/4)*(blocksize/4)) {
     // add some code here
+    *direct_num = *triple_index = -1;
+    *indirect_index = blocks_left%(blocksize/4);
+    *double_index = blocks_left/(blocksize/4);
+    return;
   }
   blocks_left -= (blocksize/4) * (blocksize/4);
 
@@ -324,6 +331,11 @@ void calculate_offsets(os_uint32_t blocknum,
   // the other argument.
   if (blocks_left < (blocksize/4)*(blocksize/4)*(blocksize/4)) {
     //add some code here
+    *direct_num = -1;
+    *indirect_index = (blocks_left%((blocksize/4)*(blocksize/4)))%(blocksize/4);
+    *double_index = (blocks_left%((blocksize/4)*(blocksize/4)))/(blocksize/4);
+    *triple_index = blocks_left/((blocksize/4)*(blocksize/4));
+     return;
   }
 
   // should never get here!
@@ -485,7 +497,7 @@ os_bool_t file_read(int fd, int file_inode_num,
   // fetch_inode().  [Hint: pass the "inode" argument into fetch_inode, so
   // that fetch_inode() reads the inode into the structure passed to
   // this function by the caller.]
-
+  fetch_inode(file_inode_num,fd,metadata,inode);
   // Step 2.  We'll only read links, regular files, and directories.
   // The OS is the only thing that knows how to interpret the other
   // file types.  So, test for the acceptable types, and return FALSE
@@ -493,9 +505,13 @@ os_bool_t file_read(int fd, int file_inode_num,
   // types are defined as bit masks in ext2reader/inc/inode.h.  For
   // example, to test if an inode is for a regular file, verify that
   // inode->i_mode & EXT2_S_IFREG is non-zero.
-
+  if((inode->i_mode & (EXT2_S_IFLNK | EXT2_S_IFREG | EXT2_S_IFDIR)) == 0){
+    return FALSE;
+  }
   // Step 3.  If the file size is 0, return TRUE.
-
+  if(inode->i_size==0){
+    return TRUE;
+  }
   // Step 4.  Allocate space for the file.  Be sure to verify that
   // malloc worked!  (If not, return FALSE.)  Store the pointer to the
   // malloc'ed space in *buffer to return it to the caller.
@@ -504,7 +520,6 @@ os_bool_t file_read(int fd, int file_inode_num,
   // of the blocksize, so that file_blockread() can always read a full
   // block from disk even if the file is not an integral number of
   // blocks.
-
   // we provided the implementation of this step for you. :)
   os_uint32_t malloc_size = inode->i_size;
   if (malloc_size % metadata->block_size != 0) {
@@ -520,6 +535,13 @@ os_bool_t file_read(int fd, int file_inode_num,
   // Step 5.  Loop through the blocks of the file, reading in
   // the file's data using file_blockread.  If anything goes wrong,
   // free the allocated buffer and return FALSE.
+  for(int i = 0; i<inode->i_blocks;i++){
+    if(!file_blockread(*inode,fd,metadata,i,*buffer+(i*(metadata->block_size)))){
+      free(buffer);
+      return FALSE;
+    }
+  }
+  
 
   // All done! Return true.
   return TRUE;
@@ -549,21 +571,29 @@ os_uint32_t scan_dir(unsigned char *directory,
       struct os_direntry_t *current_entry_p = (struct os_direntry_t *) (directory + current_offset);
 
       
+      
     // Step 2.  If inode of the current record is 0, then the
     // entry is invalid (e.g., that file was deleted from the
     // directory).  If so, skip to the next iteration of the while
     // loop (using "continue;") after properly incrementing
     // current_offset (use rec_len).
-
+      if(current_entry_p->inode == 0){
+        current_offset += current_entry_p->rec_len;
+        continue;
+      }
     // Step 3.  Compare the name in the directory entry to
     // "filename".  Note that you cannot rely on the name in
     // the directory entry to be NULL terminated, so you can't
     // use strcmp().  If the name matches, you're done -- return its
     // inode number.
-
+       if((strlen(filename) == current_entry_p->name_len) && (strncmp(filename,current_entry_p->file_name,current_entry_p->name_len) == 0) ){
+         return current_entry_p->inode;
+       }
+     
     // Step 4.  If you didn't find it, add the appropriate amount to
     // current_offset, and fall into the next iteration of the while
     // loop.
+      current_offset += current_entry_p->rec_len;
   }
 
   // Step N:  fell off the end of the directory file, and didn't find
@@ -602,10 +632,31 @@ os_uint32_t path_to_inode_num(char* path, int fd, struct os_fs_metadata_t *metad
   // we are already starting at the root
   path_remaining++;
 
+  int count=0;
+ for(int i=0;i<strlen(path);i++){
+   if(path[i]=='/'){
+     count++;
+   }
+ }
   //for each / seperated entry in the path
   //1. Use file_read to read the current directory data
   //2. Use scan_dir to search for the entry you're looking for
   //3. That will become the directory you'll use in the next iteration
-  return 0;
+  os_uint32_t inodenum;
+    for(int i=0;i<count-1;i++){
+    file_read(fd,root,metadata,&inode,&buffer);
+    char* ret=strchr(path_remaining,'/');
+    *ret='\0';
+    inodenum=scan_dir(buffer,inode.i_size,path_remaining);
+    root=inodenum;
+   path_remaining =strchr(path_remaining,'\0');
+    path_remaining++;
+    free(buffer);
+    }
+    file_read(fd,root,metadata,&inode,&buffer);
+    inodenum=scan_dir(buffer,inode.i_size,path_remaining);
+    root=inodenum;
+free(buffer);
+  return root;
   
 }
