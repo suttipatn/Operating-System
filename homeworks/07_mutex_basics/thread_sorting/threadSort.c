@@ -81,7 +81,13 @@ void MergeSort(int array[], int inputLength) {
 }
 
 // you might want some globals, put them here
-
+int NUMTHREADS;
+int VALSPERTHREAD;
+//int data[NUMTHREADS*VALSPERTHREAD];
+struct arg_struct{
+  int* data;
+  int numthread;
+};
 // here's a global I used you might find useful
 char* descriptions[] = {"brute force","bubble","merge"};
 
@@ -90,7 +96,12 @@ char* descriptions[] = {"brute force","bubble","merge"};
 //
 // you can do it a different way but I think this is easiest
 void* thread_dispatch(void* data) {
-
+  struct arg_struct *arg = (struct arg_struct*) data;
+  int*arr = arg->data;
+  int n =arg->numthread;
+  if(n%3==0){
+    BruteForceSort()
+  }
 }
 
 int main(int argc, char** argv) {
@@ -107,7 +118,7 @@ int main(int argc, char** argv) {
         printf("bad n value (number of threads) %d.  Must be a multiple of 3.\n", n);
         exit(1);
     }
-
+    NUMTHREADS=n;
     // I'm reading the number of values you want per thread
     // off the command line
     int vals_per_thread = atoi(argv[2]);
@@ -115,14 +126,15 @@ int main(int argc, char** argv) {
         printf("bad vals_per_thread value %d\n", vals_per_thread);
         exit(1);
     }
-
+    VALSPERTHREAD=vals_per_thread;
     int total_nums = n * vals_per_thread;
     int* data_array = malloc(sizeof(int) * total_nums);
     if(data_array == NULL) {
         perror("malloc failure");
         exit(1);
     }
-
+    pthread_t tid[n];
+    int thread[n];
     // initialize the test data for sort
     for(int i = 0; i < total_nums; i++) {
         // big reverse sorted list
@@ -131,11 +143,17 @@ int main(int argc, char** argv) {
         // values, but this makes it easier for you to visually
         // inspect and ensure you're sorting everything
     }
-
+    struct arg_struct arg;
     // create your threads here
-
+    for(int i=0;i<n;i++){
+      arg.data=data_array;
+      arg.numthread=i
+      pthread_create(&tid[i],NULL,thread_dispatch,&arg);
+    }
     // wait for them to finish
-
+    for(int i=0;i<n;i++){
+      pthread_join(tid[i],NULL);
+    }
     // print out the algorithm summary statistics
 
     // print out the result array so you can see the sorting is working
