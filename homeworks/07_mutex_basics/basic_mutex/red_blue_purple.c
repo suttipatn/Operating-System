@@ -41,25 +41,34 @@
   If your code is right you should see an alternating Start/End
 
  */
-
+pthread_mutex_t mutexred;
+pthread_mutex_t mutexblue;
 void redCommand() {
+    pthread_mutex_lock(&mutexred);
     printf("Start: Red\n");
     usleep(100);
     printf("End  : Red\n");
+    pthread_mutex_unlock(&mutexred);
 }
 
 void blueCommand() {
+    pthread_mutex_lock(&mutexblue);
     printf("Start: Blue\n");
     usleep(100);
     printf("End  : Blue\n");
+    pthread_mutex_unlock(&mutexblue);
 }
 
 void purpleCommand() {
+    pthread_mutex_lock(&mutexred);
+    pthread_mutex_lock(&mutexblue);
     printf("Start: Blue\n");
     printf("Start: Red\n");
     usleep(100);
     printf("End  : Red\n");
     printf("End  : Blue\n");
+    pthread_mutex_unlock(&mutexred);
+    pthread_mutex_unlock(&mutexblue);
 }
 
 void whiteCommand() {
@@ -102,7 +111,8 @@ void* thread3(void* p) {
 
 int main(int argc, char **argv) {
     pthread_t threads[3];
-
+    pthread_mutex_init(&mutexred,0);   
+    pthread_mutex_init(&mutexblue,0);  
     // to fully test your code, feel free to try other configurations
     // (e.g. a couple thread1s running at the same time, etc.)
     pthread_create(&threads[0], NULL, thread1, NULL);
@@ -114,7 +124,8 @@ int main(int argc, char **argv) {
     for (i = 0; i < 3; i++) {
         pthread_join(threads[i], NULL);
     }
-
+    pthread_mutex_destroy(&mutexred);
+    pthread_mutex_destroy(&mutexblue);
     printf("Everything finished\n");
 
     return 0;

@@ -75,7 +75,7 @@ void MergeSort(int array[], int inputLength) {
     MergeSort(array, mid);
     MergeSort(array + mid, inputLength - mid);
     // merge's last input is an inclusive index
-    printf("calling merge 0->%d, 1->%d\n mid %d\n",array[0], array[1], mid); 
+   // printf("calling merge 0->%d, 1->%d\n mid %d\n",array[0], array[1], mid); 
     Merge(array, 0, mid, inputLength - 1);
   }
 }
@@ -83,6 +83,7 @@ void MergeSort(int array[], int inputLength) {
 // you might want some globals, put them here
 int NUMTHREADS;
 int VALSPERTHREAD;
+int* array;
 //int data[NUMTHREADS*VALSPERTHREAD];
 struct arg_struct{
   int* data;
@@ -90,18 +91,73 @@ struct arg_struct{
 };
 // here's a global I used you might find useful
 char* descriptions[] = {"brute force","bubble","merge"};
+int brute[20];
+int bubble[20];
+int merge[20];
 
 // I wrote a function called thread dispatch which parses the thread
 // parameters and calls the correct sorting function
 //
 // you can do it a different way but I think this is easiest
 void* thread_dispatch(void* data) {
-  struct arg_struct *arg = (struct arg_struct*) data;
-  int*arr = arg->data;
-  int n =arg->numthread;
-  if(n%3==0){
-    BruteForceSort()
+  //struct arg_struct *arg = (struct arg_struct*) data;
+  //int* arr = arg->data;
+  //int n =arg->numthread;
+  int threadnum = *((int*)data);
+  //printf("thread# %d\n",threadnum);
+  int input[VALSPERTHREAD];
+  for(int i=0;i<VALSPERTHREAD;i++){
+    input[i]=array[i+threadnum*VALSPERTHREAD];
   }
+  if(threadnum%3==0){
+    printf("Sorting indexes %d-%d with brute force\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1);
+    sleep(1);
+    struct timeval startt, stopt;
+    suseconds_t usecs_passed;
+    gettimeofday(&startt, NULL);
+ // some code that takes time
+    BruteForceSort(input,VALSPERTHREAD);
+    gettimeofday(&stopt, NULL);
+    usecs_passed = stopt.tv_usec - startt.tv_usec;
+    brute[threadnum/3]=usecs_passed;
+    printf("Sorting indexes %d-%d with brute force done in %ld usecs\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1,usecs_passed);
+    for(int i=0;i<VALSPERTHREAD;i++){
+      array[i+threadnum*VALSPERTHREAD]=input[i];
+    }
+    
+  }
+  else if(threadnum%3==1){
+    printf("Sorting indexes %d-%d with bubble\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1);
+    sleep(1);
+    struct timeval startt, stopt;
+    suseconds_t usecs_passed;
+    gettimeofday(&startt, NULL);
+    BubbleSort(input,VALSPERTHREAD);
+    gettimeofday(&stopt, NULL);
+    usecs_passed = stopt.tv_usec - startt.tv_usec;
+    bubble[threadnum/3]=usecs_passed;
+    printf("Sorting indexes %d-%d with bubble done in %ld usecs\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1,usecs_passed);
+    for(int i=0;i<VALSPERTHREAD;i++){
+      array[i+threadnum*VALSPERTHREAD]=input[i];
+    }
+    
+  }
+  else if(threadnum%3==2){
+    printf("Sorting indexes %d-%d with merge\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1);
+    sleep(1);
+    struct timeval startt, stopt;
+    suseconds_t usecs_passed;
+    gettimeofday(&startt, NULL);
+    MergeSort(input,VALSPERTHREAD);
+    gettimeofday(&stopt, NULL);
+    usecs_passed = stopt.tv_usec - startt.tv_usec;
+    merge[threadnum/3]=usecs_passed;
+    printf("Sorting indexes %d-%d with merge done in %ld usecs\n",threadnum*VALSPERTHREAD,threadnum*VALSPERTHREAD+VALSPERTHREAD-1,usecs_passed);
+    for(int i=0;i<VALSPERTHREAD;i++){
+      array[i+threadnum*VALSPERTHREAD]=input[i];
+    }
+  }
+  return NULL;
 }
 
 int main(int argc, char** argv) {
@@ -143,19 +199,64 @@ int main(int argc, char** argv) {
         // values, but this makes it easier for you to visually
         // inspect and ensure you're sorting everything
     }
-    struct arg_struct arg;
+    array=data_array;
+    int num[n];
     // create your threads here
     for(int i=0;i<n;i++){
-      arg.data=data_array;
-      arg.numthread=i
-      pthread_create(&tid[i],NULL,thread_dispatch,&arg);
+     // struct arg_struct arg;
+      //arg.data=data_array;
+     // arg.numthread=i;
+      num[i] = i;
+      pthread_create(&tid[i],NULL,thread_dispatch,&num[i]);
     }
     // wait for them to finish
     for(int i=0;i<n;i++){
       pthread_join(tid[i],NULL);
     }
     // print out the algorithm summary statistics
-
+    int sum=0;
+    int max=-1;
+    int min=INT16_MAX;
+    for(int i=0;i<n/3;i++){
+      if(brute[i]>max){
+        max=brute[i];
+      }
+      if(brute[i]<min){
+        min=brute[i];
+      }
+      sum+=brute[i];
+    }
+    double avg=(double)sum/(n/3);
+    printf("brute force avg %lf min %d max %d\n",avg,min,max);
+    sum=0;
+    max=-1;
+    min=INT16_MAX;
+    avg=-1;
+    for(int i=0;i<n/3;i++){
+      if(bubble[i]>max){
+        max=bubble[i];
+      }
+      if(bubble[i]<min){
+        min=bubble[i];
+      }
+      sum+=bubble[i];
+    }
+    avg=(double)sum/(n/3);
+    printf("bubble avg %lf min %d max %d\n",avg,min,max);
+    sum=0;
+    max=-1;
+    min=INT16_MAX;
+    for(int i=0;i<n/3;i++){
+      if(merge[i]>max){
+        max=merge[i];
+      }
+      if(merge[i]<min){
+        min=merge[i];
+      }
+      sum+=merge[i];
+    }
+    avg=(double)sum/(n/3);
+    printf("merge avg %lf min %d max %d\n",avg,min,max);
     // print out the result array so you can see the sorting is working
     // you might want to comment this out if you're testing with large data sets
     printf("Result array:\n");
