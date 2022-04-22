@@ -5,7 +5,9 @@
 #define BUFFERSIZE 5
 int buffer[BUFFERSIZE];
 int last_valid_index;
-
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
+pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
 void *
 producer(void *arg)
 {
@@ -13,12 +15,16 @@ producer(void *arg)
         int value = *((int*) arg);
 
         for(i = 0; i < 10; ++i) {
+                pthread_mutex_lock(&lock);
+                while(last_valid_index==BUFFERSIZE-1){
+                        pthread_cond_wait(&empty,&lock);
+                }
                 buffer[last_valid_index + 1] = value;
                 last_valid_index++;
-
                 printf("Produced value %d, stored at %d\n", value, last_valid_index);
-
                 value += 1;
+                pthread_cond_signal(&fill);
+                pthread_mutex_unlock(&lock);
         }
 
         return NULL;
@@ -31,10 +37,15 @@ consumer(void *arg)
 
         for(i = 0; i < 10; ++i) {
                 sleep(1);
-
+                pthread_mutex_lock(&lock);
+                while(last_valid_index==-1){
+                        pthread_cond_wait(&fill,&lock);
+                }
                 value = buffer[last_valid_index];
                 last_valid_index--;
                 printf("Consumed value %d, stored at %d\n", value, last_valid_index+1);
+                pthread_cond_signal(&empty);
+                pthread_mutex_unlock(&lock);
         }
 
         return NULL;
