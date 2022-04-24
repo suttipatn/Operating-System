@@ -3,9 +3,6 @@
 #include <unistd.h>
 pthread_cond_t conarr[3];
 int done[3];
-// pthread_cond_t confirst;
-// pthread_cond_t consecond=PTHREAD_COND_INITIALIZER;
-// pthread_cond_t conthird=PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
 void *thread(void *arg)
 {

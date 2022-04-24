@@ -56,14 +56,23 @@ int SING = 1;
 int GUIT = 2;
 
 char* names[] = {"drummer", "singer", "guitarist"};
-
-
+int* arrived[3];
+pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond=PTHREAD_COND_INITIALIZER;
+int playing=0;
 
 // because the code is similar, we'll just have one kind of thread
 // and we'll pass its kind as a parameter
 void* friend(void * kind_ptr) {
+  pthread_mutex_lock(&lock);
 	int kind = *((int*) kind_ptr);
 	printf("%s arrived\n", names[kind]);
+  arrived[kind]++;
+  while(playing==1&&arrived[0]==0&&arrived[1]==0&&arrived[2]==0){
+    pthread_cond_wait(&cond,&lock);
+  }
+  pthread_mutex_unlock(&lock);
+  
 	printf("%s playing\n", names[kind]);
 	sleep(1);
 	printf("%s finished playing\n", names[kind]);
