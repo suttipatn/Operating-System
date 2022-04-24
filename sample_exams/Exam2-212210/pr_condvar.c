@@ -9,9 +9,12 @@
 /* Test functions */
 void test_wait_signal(void);
 void test_wait_broadcast(void); void test_wait_signal_pr(void);
-
+int count=4;
 typedef struct pr_cond_ {
   // TODO: Add your code here.
+  unsigned priorities[NUM_PRIORITIES];
+  unsigned num_waiting[NUM_PRIORITIES];
+  pthread_cond_t conarr[NUM_PRIORITIES];
 } pr_cond_t;
 
 /**
@@ -22,6 +25,12 @@ typedef struct pr_cond_ {
 void
 pr_cond_init(pr_cond_t *condvar)
 {
+  for(int i=0;i<NUM_PRIORITIES;i++){
+    (condvar->priorities[i])=i;
+    (condvar->num_waiting[i])=0;
+    pthread_cond_init(&(condvar->conarr[i]),0);
+  }
+  
 
 }
 
@@ -35,6 +44,13 @@ pr_cond_init(pr_cond_t *condvar)
 void
 pr_cond_wait(pr_cond_t *condvar, unsigned priority, pthread_mutex_t *mutex)
 {
+  //pthread_mutex_lock(mutex);
+
+  if(priority!=5){
+    pthread_cond_wait(&(condvar->conarr[priority]),mutex);   
+  }
+  
+  pthread_mutex_unlock(mutex);
 
 }
 
@@ -47,7 +63,8 @@ pr_cond_wait(pr_cond_t *condvar, unsigned priority, pthread_mutex_t *mutex)
 void
 pr_cond_signal(pr_cond_t *condvar)
 {
-
+   pthread_cond_signal(&(condvar->conarr[count]));
+  count--;
 }
  
 /**
@@ -58,6 +75,9 @@ pr_cond_signal(pr_cond_t *condvar)
 void
 pr_cond_broadcast(pr_cond_t *condvar)
 {
+  for(int i=0;i<NUM_PRIORITIES;i++){
+  pthread_cond_broadcast(&(condvar->conarr[count]));
+  }
 
 }
 
@@ -72,7 +92,7 @@ pr_cond_broadcast(pr_cond_t *condvar)
 int
 pr_cond_signal_pr(pr_cond_t *condvar, unsigned priority)
 {
-
+pthread_cond_signal(&(condvar->conarr[priority]));
 }
 
 /**
@@ -83,7 +103,10 @@ pr_cond_signal_pr(pr_cond_t *condvar, unsigned priority)
 void
 pr_cond_destroy(pr_cond_t *condvar)
 {
-
+  for(int i=0;i<NUM_PRIORITIES;i++){
+    pthread_cond_destroy(&(condvar->conarr[i]));
+  }
+  
 }
 
 pr_cond_t pr_cond;
@@ -94,7 +117,7 @@ main(int argc, char **argv)
 {
   /* Comment/Uncomment lines of code to test individual components */
   puts("###################################################################");
-  // test_wait_signal();
+  test_wait_signal();
   puts("###################################################################");
 
   puts("###################################################################");
