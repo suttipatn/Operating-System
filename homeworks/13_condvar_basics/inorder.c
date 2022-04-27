@@ -10,15 +10,16 @@ void *thread(void *arg)
         
         int *num = (int *)arg;
         if(*num!=1){
-                while(!done[*num-1]){
+                while(!done[*num-2]){
                         pthread_cond_wait(&conarr[*num-2],&lock);
                 }
         }
         printf("%d wants to enter the critical section\n", *num);
 
         printf("%d is finished with the critical section\n", *num);
-        done[*num]=1;
+        
         if(*num!=4){
+                done[(*num)-1]=1;
                 pthread_cond_signal(&conarr[*num-1]);
         }
         
