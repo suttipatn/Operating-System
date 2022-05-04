@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "forth_embed.h"
+#include "forth/forth_embed.h"
 
 #define STACKHEAP_MEM_START 0xf9f8c000
 
@@ -29,7 +29,7 @@ void main() {
                         MAP_FIXED | MAP_SHARED,
                         fd, 0);
 
-
+    printf("%d\n",getpagesize());
     //lets put some data in the file
     for(int i = 0; i < getpagesize(); i++) 
         result[i] = 'Q';

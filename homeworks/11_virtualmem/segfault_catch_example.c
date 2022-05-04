@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "forth_embed.h"
+#include "forth/forth_embed.h"
 
 /*
 
