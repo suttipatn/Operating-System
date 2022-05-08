@@ -1,4 +1,4 @@
-
+void switch_current_to(int forthnum);
 void initialize_forths();
 int create_forth(char* code);
 

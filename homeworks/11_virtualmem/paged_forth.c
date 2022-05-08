@@ -75,10 +75,10 @@ static void handler(int sig, siginfo_t *si, void *unused)
         close(files[longest]);
     }
     printf("mapping page %d\n", pagenum);
-    if (states[pagenum] == SWAPPED_OUT)
+    if (states[pagenum] != SWAPPED_OUT)
     {
         char buf[512];
-        sprintf(buf, "page_%d.dat", pagenum);
+        snprintf(buf, 512, "page_%d.dat", pagenum);
         int fd = open(buf, O_RDWR | O_CREAT, S_IRWXU);
         if (fd < 0)
         {
@@ -101,7 +101,7 @@ static void handler(int sig, siginfo_t *si, void *unused)
     else
     {
         char buf[512];
-        sprintf(buf, "page_%d.dat", pagenum);
+        snprintf(buf, 512,"page_%d.dat", pagenum);
         int fd = open(buf, O_RDWR | O_CREAT, S_IRWXU);
         if (fd < 0)
         {

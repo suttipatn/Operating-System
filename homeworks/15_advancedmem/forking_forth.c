@@ -13,7 +13,7 @@
 // so we want address that won't get used as the program
 // starts up
 #define UNIVERSAL_PAGE_START 0xf9f8c000
-
+int fd;
 // the number of memory pages will will allocate to an instance of forth
 #define NUM_PAGES 22 // last two pages are for the return stack
 #define MAX_FORTHS 10
@@ -24,7 +24,21 @@ void push_onto_forth_stack(struct forth_data *data, int64_t value_to_push);
 
 
 #define PAGE_UNCREATED -1
+void switch_current_to(int forthnum){
+    munmap((void*) UNIVERSAL_PAGE_START, getpagesize());
 
+    void* result = mmap((void*) UNIVERSAL_PAGE_START,
+                        getpagesize()*NUM_PAGES,
+                        PROT_READ | PROT_WRITE | PROT_EXEC,
+                        MAP_SHARED | MAP_FIXED,
+                        fd,
+                        getpagesize()*NUM_PAGES*forthnum);
+
+    if(result != (void*) UNIVERSAL_PAGE_START) {
+        perror("second mmap failed");
+        exit(1);
+    }
+}
 struct forth_extra_data {
     bool valid;
     struct forth_data data;
@@ -43,7 +57,29 @@ void initialize_forths() {
     if(first_time) {
         // here's the place for code you only want to run once, like registering
         // our SEGV signal handler
+    fd = open("bigmem.dat", O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+    if(fd < 0) {
+        perror("error loading linked file");
+        exit(25);
+    }
+    // STEP 2: Ensure the file is big enough for all our data
+    char data = '\0';
+    lseek(fd, getpagesize()*NUM_PAGES*MAX_FORTHS, SEEK_SET);
+    write(fd, &data, 1); 
+    lseek(fd, 0, SEEK_SET);
 
+    // STEP 3, mmap at some location chosen by mmap
+    char* frames = mmap(NULL,
+            getpagesize()*NUM_PAGES*MAX_FORTHS,
+            PROT_READ | PROT_WRITE | PROT_EXEC,
+            MAP_SHARED,
+            fd,
+            0);
+
+    if(frames == NULL) {
+        perror("first mmap failed");
+        exit(1);
+    }
         first_time = false;
                
     }
@@ -84,8 +120,14 @@ int create_forth(char* code) {
     // starting at position UNIVERSAL_PAGE_START to get started
     //
     // use mmap
-    
-
+    char* result=mmap((void*)UNIVERSAL_PAGE_START,NUM_PAGES* getpagesize()
+    ,PROT_READ | PROT_WRITE | PROT_EXEC,MAP_FIXED | MAP_SHARED | MAP_ANONYMOUS,-1,0);
+    if (result == MAP_FAILED)
+        {
+            perror("map failed");
+            exit(1);
+        }
+    void switch_current_to(int forthnum);
     // the return stack is a forth-specific data structure.  I
     // allocate a seperate space for it as the last 2 pages of
     // NUM_PAGES.
@@ -118,6 +160,7 @@ int create_forth(char* code) {
 
 struct run_output run_forth_until_event(int forth_to_run) {
     struct run_output output;
+    void switch_current_to(int forth_to_run);
     output.result_code = f_run(&forth_extra_data[forth_to_run].data,
                                NULL,
                                output.output,
